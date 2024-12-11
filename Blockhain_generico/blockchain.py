@@ -1,7 +1,6 @@
 import datetime
 import hashlib
 import json
-from flask import Flask, jsonify
 
 
 #bloco01
@@ -49,6 +48,7 @@ class Blockchain:
         
         previous_block = chain[0]
         block_index= 1
+
         while block_index < len(chain):
             block = chain[block_index]
             if block['previous_hash'] != self.hash(previous_block): #verificando se o hash atual é igual ou diferente do que o anterior
@@ -56,10 +56,19 @@ class Blockchain:
             previous_proof = previous_block['proof']
             proof = block['proof']
             hash_operation = hashlib.sha256(str(proof**2 - previous_proof**2).encode()).hexdigest()
+            if hash_operation[-4] != '0000':
+                return False
+            
+            previous_block = block
+            block_index +=1
+
+        return True
+    
+
 
 
         
-    
+
     
 
 
