@@ -9,7 +9,7 @@ class Blockchain:
 
     def __init__(self):
         self.chain = []
-        self.chreate_block(proof=1, previous_hash='0')
+        self.create_block(proof=1, previous_hash='0')
 
 
     def create_block(self,proof, previous_hash):
@@ -40,7 +40,7 @@ class Blockchain:
         return new_proof
     
     def hash(self, block):
-        encoded_block = json.dumps(block, sort_keys==True).encode()
+        encoded_block = json.dumps(block, sort_keys =True).encode()
         return hashlib.sha256(encoded_block).hexdigest()
     
     def is_chain_valid(self,chain):
