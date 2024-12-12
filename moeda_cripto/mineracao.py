@@ -1,11 +1,17 @@
-from blockchain import Blockchain
-from fastapi import FastAPI
+from RealCoin import Blockchain
+from fastapi import FastAPI,HTTPException
 from pydantic import BaseModel
+import requests
+from urllib.parse import urlparse
+from uuid import uuid4
+from typing import List, Optional
 
 
 app = FastAPI()
 
 blockchain = Blockchain()
+
+node_address = str(uuid4()).replace('-','')
 
 class MineBlockResponse(BaseModel):
     message: str
@@ -19,6 +25,17 @@ class ChainResponse(BaseModel):
 class ValidationResponse(BaseModel):
     message: str
 
+class Transaction(BaseModel):
+    sender: str
+    receiver: str
+    amount: float
+
+# Modelo para validar os dados enviados na requisição
+class NodeConnection(BaseModel):
+    nodes: Optional[List[str]]
+
+
+
 @app.get("/mine_block", response_model=MineBlockResponse)
 async def mine_block():
     """
@@ -28,12 +45,17 @@ async def mine_block():
     previous_proof = previous_block['proof']
     proof = blockchain.proof_of_work(previous_proof)
     previous_hash = blockchain.hash(previous_block)
+    blockchain.add_transaction(sender=node_address, receiver = 'Luiz', amount= 1)
     block = blockchain.create_block(proof, previous_hash)
     return {
         "message": "Primeiro bloco minerado com sucesso!",
         "index": block['index'],
-        "timestamp": block['timestamp']
+        "timestamp": block['timestamp'],
+        'proof': block['proof'],
+        'previous_hash': block['previous_hash'],
+        'transaction': block['transactions']
     }
+
 
 @app.get("/get_chain", response_model=ChainResponse)
 async def get_chain():
@@ -54,6 +76,54 @@ async def is_valid():
     if is_valid:
         return {"message": "Tudo certo, blockchain válida!"}
     return {"message": "O blockchain não é válido."}
+
+
+
+
+@app.post('/add_transaction')
+async def add_transaction(transaction: Transaction):
+    """
+    Adiciona uma nova transação à blockchain.
+    """
+    # Adiciona a transação
+    index = blockchain.add_transaction(transaction.sender, transaction.receiver, transaction.amount)
+    
+    # Retorna uma resposta JSON
+    return {
+        "message": f"Essa transação será adicionada ao bloco: {index}"
+    }
+
+@app.post('/connect_node')
+async def connect_node(node_connection: NodeConnection):
+    """
+    Conectar novos nós à blockchain.
+    """
+    nodes = node_connection.nodes
+    if not nodes:
+        raise HTTPException(status_code=400, detail="Nenhum node foi fornecido")
+    
+    for node in nodes:
+        blockchain.add_node(node)
+        
+    response = {
+        "message": "Todos os nós foram conectados com sucesso.",
+        "total_nodes": list(blockchain.nodes)
+    }
+    return response
+
+
+@app.get('/replace_chain')
+def replace_chain():
+    is_chain_replaced = blockchain.replace_chain()
+    if is_chain_replaced:
+        response = {'message': 'os nos tinham cadeias diferentes então foi substituida',
+                    'new_chain': blockchain.chain}
+    else:
+        response = {'message': 'Tudo certo, não houve subtituicao',
+                    'actual_chain': blockchain.chain}
+        
+    return response
+        
 
 # Rodar a aplicação:
 # Para iniciar o servidor, use o comando:
