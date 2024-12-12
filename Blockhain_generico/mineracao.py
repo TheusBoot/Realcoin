@@ -1,56 +1,64 @@
-from flask import Flask, jsonify
 from blockchain import Blockchain
+from fastapi import FastAPI
+from pydantic import BaseModel
 
 
-
-
-
-app = Flask(__name__)
-
-#app.config['JSONIFY_PRETTYPRINT_REGULAR'] = False
+app = FastAPI()
 
 blockchain = Blockchain()
 
-@app.route('/mine_block', methods=['GET'])
-def mine_block():
-    """minerando um block!"""
+class MineBlockResponse(BaseModel):
+    message: str
+    index: int
+    timestamp: str
 
+class ChainResponse(BaseModel):
+    chain: list
+    length: int
+
+class ValidationResponse(BaseModel):
+    message: str
+
+@app.get("/mine_block", response_model=MineBlockResponse)
+async def mine_block():
+    """
+    Minera um bloco.
+    """
     previous_block = blockchain.get_previous_block()
     previous_proof = previous_block['proof']
     proof = blockchain.proof_of_work(previous_proof)
     previous_hash = blockchain.hash(previous_block)
     block = blockchain.create_block(proof, previous_hash)
-    response = {'mensage': 'primeiro block!!',
-                'index':block['index'],
-                'timespamp':block['timestamp']}
-    return jsonify(response), 200
+    return {
+        "message": "Primeiro bloco minerado com sucesso!",
+        "index": block['index'],
+        "timestamp": block['timestamp']
+    }
 
+@app.get("/get_chain", response_model=ChainResponse)
+async def get_chain():
+    """
+    Retorna toda a blockchain.
+    """
+    return {
+        "chain": blockchain.chain,
+        "length": len(blockchain.chain)
+    }
 
-@app.route('/get_chain', methods= ['GET'])
-def get_chain():
-    """retornar toda blockchain"""
-    response = {'chain':blockchain.chain,
-                'length': len(blockchain.chain)}
-    return jsonify(response), 200
-
-
-@app.route('/is_valid',methods=['GET'])
-def is_valid():
-    """Verificando se a blockchain é valida!"""
-
+@app.get("/is_valid", response_model=ValidationResponse)
+async def is_valid():
+    """
+    Verifica se a blockchain é válida.
+    """
     is_valid = blockchain.is_chain_valid(blockchain.chain)
     if is_valid:
-        response = {'message': 'tudo certo, bloco valido!'}
-    else:
-        response = {'message': 'o blockchain não é valido'}
+        return {"message": "Tudo certo, blockchain válida!"}
+    return {"message": "O blockchain não é válido."}
 
-    return jsonify(response), 200
+# Rodar a aplicação:
+# Para iniciar o servidor, use o comando:
+# uvicorn main:app --host 0.0.0.0 --port 5000 --reload
 
-
-
-
-
-app.run(host='0.0.0.0', port=5000)
 
 
 
